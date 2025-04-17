@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gigi Wallet Connect</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 60px;
+      background-color: #0f0f0f;
+      color: white;
+    }
+    button {
+      padding: 14px 30px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      margin: 15px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .ton { background-color: #15aaff; }
+    .metamask { background-color: #f6851b; }
+    .phantom { background-color: #9c27b0; }
+  </style>
+</head>
+<body>
+  <h1>🔗 Gigi Wallet Connect Portal</h1>
+  <p>Choose a wallet to connect with:</p>
+
+  <a href="https://t.me/wallet/start?startapp=tonconnect-v2&manifestUrl=https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json">
+    <button class="ton">🔹 Connect TON Wallet</button>
+  </a>
+
+  <a href="https://metamask.app.link/dapp/gigi-ton-connect-v2.onrender.com/sign.html?amount=10&to=0xYourEVMReceiverAddress">
+    <button class="metamask">🦊 Connect MetaMask</button>
+  </a>
+
+  <a href="https://phantom.app/ul/browse/gigi-ton-connect-v2.onrender.com/sign.html?amount=10&to=YourSolanaAddress">
+    <button class="phantom">👻 Connect Phantom</button>
+  </a>
+</body>
+</html>
