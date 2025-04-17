@@ -23,11 +23,13 @@
 
         await connector.restoreConnection();
 
+        // If not connected, stop
         if (!connector.connected) {
           statusEl.textContent = "❌ Wallet not connected.";
           return;
         }
 
+        // Proceed with transaction signing
         await connector.sendTransaction({
           validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [
@@ -51,4 +53,3 @@
 <body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;">
 </body>
 </html>
-
