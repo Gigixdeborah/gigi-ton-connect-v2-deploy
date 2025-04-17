@@ -2,109 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Gigi Wallet Sign</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 40px; }
-    button { padding: 12px 24px; margin: 10px; font-size: 16px; }
-  </style>
-</head>
-<body>
-  <h2>🔐 Connect and Sign with Your Wallet</h2>
-  <p id="status">Select your wallet below 👇</p>
-
-  <button onclick="signWithTon()">🔷 Sign with TON</button>
-  <button onclick="signWithMetaMask()">🦊 Sign with MetaMask</button>
-  <button onclick="signWithPhantom()">👻 Sign with Phantom</button>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TON Sign Request</title>
   <script type="module">
-    const url = new URL(window.location.href);
-    const amount = url.searchParams.get("amount");
-    const to = url.searchParams.get("to");
-    const token = url.searchParams.get("token") || "ton"; // token used to detect network
+    import { TonConnect } from "https://unpkg.com/@tonconnect/sdk@latest";
 
-    // TON
-    async function signWithTon() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const to = urlParams.get("to");
+    const amount = urlParams.get("amount");
+
+    const statusEl = document.createElement("div");
+    statusEl.style = "padding: 1rem; font-family: sans-serif; font-size: 1.2rem;";
+    document.body.appendChild(statusEl);
+
+    async function run() {
       try {
-        document.getElementById("status").innerText = "⏳ Connecting to TON Wallet...";
-        const { TonConnect } = await import("https://unpkg.com/@tonconnect/sdk@latest");
-        const tonConnect = new TonConnect({
-          manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json"
+        const connector = new TonConnect({
+          manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
         });
 
-        const connected = await tonConnect.restoreConnection();
-        if (!connected) await tonConnect.connectWallet();
+        await connector.restoreConnection();
 
-        await tonConnect.sendTransaction({
+        if (!connector.connected) {
+          statusEl.textContent = "❌ Wallet not connected.";
+          return;
+        }
+
+        await connector.sendTransaction({
           validUntil: Math.floor(Date.now() / 1000) + 600,
-          messages: [{ address: to, amount }]
+          messages: [
+            {
+              address: to,
+              amount: amount
+            }
+          ]
         });
 
-        document.getElementById("status").innerText = "✅ TON transaction sent!";
+        statusEl.textContent = "✅ Transaction sent to TON Wallet!";
       } catch (err) {
-        document.getElementById("status").innerText = "❌ TON sign failed.";
         console.error(err);
+        statusEl.textContent = "❌ Signing cancelled or failed.";
       }
     }
 
-    // MetaMask
-    async function signWithMetaMask() {
-      try {
-        document.getElementById("status").innerText = "🦊 Connecting to MetaMask...";
-        if (!window.ethereum) return alert("MetaMask not found!");
-
-        const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
-        const tx = {
-          from: account,
-          to: to,
-          value: `0x${parseInt(amount).toString(16)}`,
-          gas: "0x5208"
-        };
-
-        const txHash = await window.ethereum.request({
-          method: "eth_sendTransaction",
-          params: [tx]
-        });
-
-        document.getElementById("status").innerText = `✅ TX Hash: ${txHash}`;
-      } catch (err) {
-        document.getElementById("status").innerText = "❌ MetaMask sign failed.";
-        console.error(err);
-      }
-    }
-
-    // Phantom (Solana)
-    async function signWithPhantom() {
-      try {
-        document.getElementById("status").innerText = "👻 Connecting to Phantom...";
-        const provider = window.phantom?.solana;
-        if (!provider) return alert("Phantom Wallet not found!");
-
-        await provider.connect();
-        const from = provider.publicKey;
-        const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com");
-
-        const transaction = new solanaWeb3.Transaction().add(
-          solanaWeb3.SystemProgram.transfer({
-            fromPubkey: from,
-            toPubkey: new solanaWeb3.PublicKey(to),
-            lamports: parseInt(amount) // in lamports (1 SOL = 1e9 lamports)
-          })
-        );
-
-        transaction.feePayer = from;
-        transaction.recentBlockhash = (await connection.getRecentBlockhash()).blockhash;
-
-        const signed = await provider.signTransaction(transaction);
-        const signature = await connection.sendRawTransaction(signed.serialize());
-
-        document.getElementById("status").innerText = `✅ TX Signature: ${signature}`;
-      } catch (err) {
-        document.getElementById("status").innerText = "❌ Phantom sign failed.";
-        console.error(err);
-      }
-    }
+    run();
   </script>
-
-  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+</head>
+<body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;">
 </body>
 </html>
+
