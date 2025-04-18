@@ -1,86 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TON Connect Sign Request</title>
-  <style>
-    body {
-      background-color: #000;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      text-align: center;
-      flex-direction: column;
-    }
-    .status {
-      margin-top: 1rem;
-      font-size: 1.2rem;
-    }
-    .error { color: #ff4b4b; }
-    .success { color: #00ffcc; }
-    .loading { color: #00bfff; }
-  </style>
-</head>
-<body>
-  <h2>TON Connect Sign Request</h2>
-  <div id="status" class="status loading">Connecting to wallet...</div>
-
   <script type="module">
-    import { TonConnect, CHAIN } from "https://unpkg.com/@tonconnect/sdk@latest";
+    import { TonConnect, toUserFriendlyAddress } from "@tonconnect/sdk";
 
-    const status = document.getElementById("status");
+    const urlParams = new URLSearchParams(window.location.search);
+    const amount = urlParams.get("amount");
+    const to = urlParams.get("to");
 
-    const url = new URL(window.location.href);
-    const to = url.searchParams.get("to");
-    const amount = url.searchParams.get("amount");
-
-    if (!to || !amount) {
-      status.className = "status error";
-      status.textContent = "❌ Missing amount or address";
-      throw new Error("Missing amount or address");
-    }
-
-    const connector = new TonConnect({
+    const tonConnect = new TonConnect({
       manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
     });
 
-    const tx = {
-      validUntil: Math.floor(Date.now() / 1000) + 600,
-      messages: [{
-        address: to,
-        amount: amount.toString(),
-      }]
-    };
+    async function connectAndSign() {
+      const connected = await tonConnect.restoreConnection();
+      if (!connected) {
+        await tonConnect.connectWallet();
+      }
 
-    async function connectAndSend() {
+      const wallet = tonConnect.wallet;
+      if (!wallet) {
+        document.body.innerHTML = "❌ Wallet not connected.";
+        return;
+      }
+
+      const tx = {
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [
+          {
+            address: to,
+            amount: amount.toString(),
+          },
+        ],
+      };
+
       try {
-        const connected = await connector.restoreConnection();
-        if (!connected) {
-          await connector.connectWallet();
-        }
-
-        if (!connector.connected) {
-          status.textContent = "❌ Wallet not connected";
-          status.className = "status error";
-          return;
-        }
-
-        status.textContent = "🚀 Sending transaction...";
-        const result = await connector.sendTransaction(tx);
-        status.textContent = `✅ Transaction sent! BOC: ${result.boc}`;
-        status.className = "status success";
-      } catch (err) {
-        console.error("❌ Signing error:", err);
-        status.textContent = "❌ Signing cancelled or failed.";
-        status.className = "status error";
+        await tonConnect.sendTransaction(tx);
+        document.body.innerHTML = "✅ Transaction Sent!";
+      } catch (e) {
+        console.error(e);
+        document.body.innerHTML = "❌ Transaction Cancelled.";
       }
     }
 
-    connectAndSend();
+    connectAndSign();
   </script>
+</head>
+<body style="background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;">
+  <h2>TON Connect Sign Request</h2>
 </body>
 </html>
