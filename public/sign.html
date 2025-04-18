@@ -30,8 +30,10 @@
   <div class="loader" id="status">🔗 Preparing your transaction...</div>
 
   <script type="module">
-    // ✅ FIX: Use default import instead of named import
-    import TonConnectUI from "https://unpkg.com/@tonconnect/ui@0.1.1/dist/tonconnect-ui.min.js";
+    import {
+      TonConnect,
+      SendTransactionRequest
+    } from "https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js";
 
     const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
@@ -42,43 +44,46 @@
 
     if (!tonAddressRegex.test(to)) {
       status.textContent = "❌ Invalid TON wallet address format.";
-      return;
+      throw new Error("Invalid wallet address");
     }
 
     if (isNaN(amount) || parseFloat(amount) <= 0) {
-      status.textContent = "❌ Amount must be a positive number.";
-      return;
+      status.textContent = "❌ Invalid amount.";
+      throw new Error("Invalid amount");
     }
 
-    const connector = new TonConnectUI({
+    const connector = new TonConnect({
       manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
     });
 
-    async function signTransaction() {
+    async function sendTX() {
       try {
         status.textContent = "🔐 Connecting to wallet...";
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          status.textContent = "❌ Wallet not connected. Please connect your wallet.";
+          status.textContent = "❌ Wallet not connected.";
           return;
         }
 
         const tx = {
           validUntil: Math.floor(Date.now() / 1000) + 360,
-          messages: [{ address: to, amount: amount.toString() }]
+          messages: [{
+            address: to,
+            amount: amount.toString()
+          }]
         };
 
         status.textContent = "🚀 Sending transaction...";
         const result = await connector.sendTransaction(tx);
-        status.textContent = `✅ Transaction sent! Hash: ${result.boc}`;
+        status.textContent = `✅ Transaction sent!\n\nResult: ${JSON.stringify(result)}`;
       } catch (err) {
-        console.error("Transaction failed:", err);
-        status.textContent = "❌ Transaction failed: " + (err.message || err);
+        console.error(err);
+        status.textContent = "❌ Transaction failed.";
       }
     }
 
-    signTransaction();
+    sendTX();
   </script>
 </body>
 </html>
