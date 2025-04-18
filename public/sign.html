@@ -3,69 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TON Connect Sign Request</title>
+  <title>TON Wallet Sign</title>
   <script src="https://unpkg.com/@tonconnect/ui@0.0.9/dist/tonconnect-ui.min.js"></script>
   <style>
     body {
       background-color: #000;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
-      text-align: center;
+      margin: 0;
     }
-    .loader {
-      color: #00bfff;
-      margin-top: 10px;
+    h1 {
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+    }
+    .emoji {
+      font-size: 2rem;
+      margin-right: 10px;
+    }
+    #ton-connect {
+      margin: 20px 0;
+    }
+    .status {
+      font-size: 1.2rem;
+      color: #ccc;
     }
   </style>
 </head>
 <body>
-  <h1>🟡 Sign TON Transaction</h1>
-  <div class="loader">⏳ Preparing transaction...</div>
+  <h1><span class="emoji">🪙</span>Sign TON Transaction</h1>
+  <div id="ton-connect"></div>
+  <div class="status">🔗 Preparing transaction...</div>
 
   <script>
-    (async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const amount = urlParams.get("amount");
-      const to = urlParams.get("to");
+    const tonConnectUI = new TonConnectUI.TonConnectUI({
+      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json",
+      buttonRootId: "ton-connect"
+    });
 
-      if (!amount || !to) {
-        document.querySelector(".loader").innerText = "❌ Missing amount or recipient";
-        return;
-      }
+    const query = new URLSearchParams(window.location.search);
+    const amount = query.get("amount");
+    const to = query.get("to");
 
-      const connector = new TON_CONNECT_UI.TonConnectUI({
-        manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json",
-        buttonRootId: "", // don't attach a floating button
-      });
-
-      try {
-        await connector.connectUI(); // this shows the wallet list popup
-
-        const connected = await connector.connected;
-        if (!connected) {
-          document.querySelector(".loader").innerText = "❌ Wallet connection failed.";
-          return;
-        }
-
-        await connector.sendTransaction({
-          validUntil: Math.floor(Date.now() / 1000) + 360,
-          messages: [{
+    if (amount && to) {
+      tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
             address: to,
-            amount: amount.toString(),
-          }]
-        });
-
-        document.querySelector(".loader").innerText = "✅ Transaction request sent!";
-      } catch (err) {
-        console.error("Transaction failed", err);
-        document.querySelector(".loader").innerText = "❌ Transaction failed or cancelled.";
-      }
-    })();
+            amount: amount
+          }
+        ]
+      });
+    }
   </script>
 </body>
 </html>
