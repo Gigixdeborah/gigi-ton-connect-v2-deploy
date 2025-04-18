@@ -1,53 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>TON Connect Sign Request</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TON Wallet Sign</title>
   <script type="module">
-    import { TonConnect, toUserFriendlyAddress } from "@tonconnect/sdk";
+    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@latest";
 
+    const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
-    const amount = urlParams.get("amount");
     const to = urlParams.get("to");
+    const amount = urlParams.get("amount");
 
-    const tonConnect = new TonConnect({
-      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
+    const connectorUI = new TonConnectUI({
+      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json",
+      buttonRootId: "ton-button",
+      actionsConfiguration: {
+        twaReturnUrl: "https://t.me/GigiP2Bot" // Optional: redirect after connect
+      }
     });
 
-    async function connectAndSign() {
-      const connected = await tonConnect.restoreConnection();
-      if (!connected) {
-        await tonConnect.connectWallet();
-      }
-
-      const wallet = tonConnect.wallet;
-      if (!wallet) {
-        document.body.innerHTML = "❌ Wallet not connected.";
-        return;
-      }
-
-      const tx = {
-        validUntil: Math.floor(Date.now() / 1000) + 300,
-        messages: [
-          {
-            address: to,
-            amount: amount.toString(),
-          },
-        ],
-      };
-
+    async function signTransaction() {
       try {
-        await tonConnect.sendTransaction(tx);
-        document.body.innerHTML = "✅ Transaction Sent!";
-      } catch (e) {
-        console.error(e);
-        document.body.innerHTML = "❌ Transaction Cancelled.";
+        status.textContent = "🔐 Waiting for wallet connection...";
+
+        const nano = parseInt(amount).toString();
+        const tx = {
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [{ address: to, amount: nano }]
+        };
+
+        await connectorUI.sendTransaction(tx);
+        status.textContent = "✅ Transaction request sent!";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Transaction failed or cancelled.";
       }
     }
 
-    connectAndSign();
+    setTimeout(() => {
+      signTransaction();
+    }, 1000);
   </script>
+
+  <style>
+    body {
+      background: #000;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+    #ton-button {
+      margin-top: 2rem;
+    }
+    .status {
+      font-size: 1.2rem;
+      margin-top: 1rem;
+    }
+  </style>
 </head>
-<body style="background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;">
-  <h2>TON Connect Sign Request</h2>
+<body>
+  <h1>🪙 Sign TON Transaction</h1>
+  <div class="status" id="status">🔗 Preparing transaction...</div>
+  <div id="ton-button"></div>
 </body>
 </html>
