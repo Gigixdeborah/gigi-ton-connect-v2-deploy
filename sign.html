@@ -4,41 +4,68 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TON Sign Request</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      padding: 1.5rem;
+    }
+    #status {
+      font-size: 18px;
+      line-height: 1.6;
+    }
+    a {
+      color: #00f0ff;
+      text-decoration: underline;
+    }
+  </style>
   <script type="module">
     import { TonConnect } from "https://unpkg.com/@tonconnect/sdk@latest";
 
+    const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get("to");
     const amount = urlParams.get("amount");
 
     const connector = new TonConnect({
-      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json",
+      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json"
     });
 
     async function signTransaction() {
-      const status = document.getElementById("status");
+      if (!to || !amount) {
+        status.textContent = "❗ Missing 'to' or 'amount' in the URL.";
+        return;
+      }
+
       try {
         status.textContent = "🔐 Connecting to wallet...";
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          status.textContent = "⚠️ Wallet not connected.";
+          status.textContent = "⚠️ Wallet not connected. Please connect your wallet first.";
           return;
         }
 
         const transaction = {
-          validUntil: Math.floor(Date.now() / 1000) + 600,
+          validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
           messages: [
             {
               address: to,
-              amount: amount,
-            },
-          ],
+              amount: amount.toString(), // make sure it's a string
+            }
+          ]
         };
 
         status.textContent = "🚀 Sending transaction...";
         await connector.sendTransaction(transaction);
-        status.textContent = "✅ Transaction sent successfully!";
+
+        status.innerHTML = "✅ Transaction sent successfully!<br/><br/><a href='https://t.me/GigiP2Bot'>🔙 Back to Bot</a>";
       } catch (error) {
         status.textContent = `❌ Error: ${error.message}`;
       }
@@ -47,7 +74,8 @@
     signTransaction();
   </script>
 </head>
-<body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;">
+<body>
   <div id="status">🔄 Preparing transaction...</div>
 </body>
 </html>
+
