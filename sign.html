@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+k<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TON Sign Request</title>
-  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect.umd.min.js"></script>
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.umd.js"></script>
   <style>
     body {
-      background-color: #000;
+      background: #000;
       color: #fff;
       display: flex;
       align-items: center;
@@ -16,38 +16,38 @@
       font-family: sans-serif;
       font-size: 1.2rem;
     }
-    .success { color: #00ff99; }
-    .error { color: #ff5555; }
+    #status {
+      padding: 1rem;
+    }
   </style>
 </head>
 <body>
-  <div id="status">⏳ Connecting to wallet...</div>
-
+  <div id="status">Connecting to wallet...</div>
   <script>
-    (async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const to = urlParams.get("to");
-      const amount = urlParams.get("amount");
-      const statusEl = document.getElementById("status");
+    const urlParams = new URLSearchParams(window.location.search);
+    const to = urlParams.get("to");
+    const amount = urlParams.get("amount");
+    const statusEl = document.getElementById("status");
 
+    async function run() {
       if (!to || !amount) {
-        statusEl.innerHTML = "<span class='error'>❌ Missing transaction parameters.</span>";
+        statusEl.textContent = "❌ Missing transaction parameters.";
         return;
       }
 
       try {
-        const connector = new window.TonConnectSDK.TonConnect({
+        const connector = new tonConnectSdk.TonConnect({
           manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
         });
 
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          await connector.connect({ jsBridgeKey: 'ton-injected' }); // For Telegram wallet
+          await connector.connect({ jsBridgeKey: "ton-injected" }); // 🧠 For Telegram Mini App
         }
 
         if (!connector.connected) {
-          statusEl.innerHTML = "<span class='error'>❌ Wallet not connected.</span>";
+          statusEl.textContent = "❌ Wallet not connected.";
           return;
         }
 
@@ -56,12 +56,15 @@
           messages: [{ address: to, amount: amount }]
         });
 
-        statusEl.innerHTML = "<span class='success'>✅ Transaction sent to TON Wallet!</span>";
+        statusEl.textContent = "✅ Transaction sent to TON Wallet!";
       } catch (err) {
-        console.error("❌ Signing Error:", err);
-        statusEl.innerHTML = "<span class='error'>❌ Signing cancelled or failed.</span>";
+        console.error("❌ Error:", err);
+        statusEl.textContent = "❌ Signing cancelled or failed.";
       }
-    })();
+    }
+
+    run();
   </script>
 </body>
 </html>
+
