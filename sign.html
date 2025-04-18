@@ -2,98 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TON Sign Request</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GigiP2Bot — TON Sign</title>
   <style>
     body {
-      background-color: #000;
+      background: #000;
       color: #fff;
       font-family: 'Segoe UI', sans-serif;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      text-align: center;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    #qr {
+      margin-top: 20px;
     }
     .status {
-      font-size: 1.2rem;
       margin-top: 1rem;
+      font-size: 1rem;
     }
+    .loading { color: #00bfff; }
     .error { color: #ff4b4b; }
     .success { color: #00ffcc; }
-    .loading { color: #00bfff; }
   </style>
 </head>
 <body>
-  <div id="status" class="status loading">🔗 Preparing your transaction...</div>
+  <h2>🔐 GigiP2Bot - Authorize Transaction</h2>
+  <div id="qr"></div>
+  <div id="status" class="status loading">Connecting to your wallet...</div>
 
-  <!-- ✅ UMD version of TonConnect SDK -->
   <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
   <script>
-    const status = document.getElementById("status");
+    const statusEl = document.getElementById("status");
+    const qrEl = document.getElementById("qr");
 
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get("to");
     const amount = urlParams.get("amount");
 
-    // Validate parameters
     if (!to || !amount) {
-      status.textContent = "❌ Missing transaction parameters.";
-      status.className = "status error";
-      throw new Error("Missing parameters");
-    }
-
-    const isValidTON = /^UQ[A-Za-z0-9_-]{46}$/.test(to);
-    if (!isValidTON) {
-      status.textContent = "❌ Invalid TON address format.";
-      status.className = "status error";
-      throw new Error("Invalid address");
+      statusEl.textContent = "❌ Missing transaction parameters.";
+      statusEl.className = "status error";
+      throw new Error("Missing `to` or `amount`.");
     }
 
     const connector = new window.TonConnectSDK.TonConnect({
       manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json"
     });
 
-    async function run() {
+    async function connectAndSend() {
       try {
-        status.textContent = "🔐 Connecting to wallet...";
-        status.className = "status loading";
-
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          status.textContent = "❌ Wallet not connected.";
-          status.className = "status error";
+          const link = await connector.connect({ jsBridgeKey: 'ton-injected' });
+
+          // fallback QR for non-Telegram wallets
+          await QRCode.toCanvas(document.createElement("canvas"), link, (err, canvas) => {
+            if (!err) qrEl.appendChild(canvas);
+          });
+
+          statusEl.textContent = "📲 Scan the QR code to connect wallet.";
           return;
         }
 
-        const nano = parseFloat(amount) * 1e9;
+        const nano = (parseFloat(amount) * 1e9).toString();
 
         const tx = {
           validUntil: Math.floor(Date.now() / 1000) + 600,
-          messages: [
-            {
-              address: to,
-              amount: nano.toString(),
-            },
-          ],
+          messages: [{ address: to, amount: nano }]
         };
 
-        status.textContent = "🚀 Sending transaction to wallet...";
+        statusEl.textContent = "🚀 Sending transaction...";
         const result = await connector.sendTransaction(tx);
-
-        status.textContent = `✅ Transaction sent! BOC: ${result.boc}`;
-        status.className = "status success";
+        statusEl.textContent = `✅ Transaction sent!\nBOC: ${result.boc}`;
+        statusEl.className = "status success";
       } catch (err) {
-        console.error("Signing error:", err);
-        status.textContent = "❌ Signing cancelled or failed.";
-        status.className = "status error";
+        console.error(err);
+        statusEl.textContent = "❌ Signing cancelled or failed.";
+        statusEl.className = "status error";
       }
     }
 
-    run();
+    connectAndSend();
   </script>
 </body>
 </html>
+
