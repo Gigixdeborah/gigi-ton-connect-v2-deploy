@@ -20,13 +20,17 @@
       font-size: 1.2rem;
       color: #00bfff;
     }
+    .error {
+      color: #ff4b4b;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
   <div class="loader" id="status">🔗 Preparing your transaction...</div>
 
   <script type="module">
-    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@0.1.1/dist/tonconnect-ui.min.js";
+    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@0.1.1/dist/tonconnect-ui.js";
 
     const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
@@ -77,4 +81,3 @@
   </script>
 </body>
 </html>
-
