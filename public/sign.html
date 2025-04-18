@@ -30,7 +30,8 @@
   <div class="loader" id="status">🔗 Preparing your transaction...</div>
 
   <script type="module">
-    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@0.1.1/dist/tonconnect-ui.js";
+    // ✅ FIX: Use default import instead of named import
+    import TonConnectUI from "https://unpkg.com/@tonconnect/ui@0.1.1/dist/tonconnect-ui.min.js";
 
     const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
