@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TON Wallet Sign</title>
+</head>
+<body style="background:black;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+  <h2>🪙 Sign TON Transaction</h2>
+  <p>🔗 Preparing transaction...</p>
+  <script type="module">
+    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@latest?module";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const nanoAmount = urlParams.get("amount");
+    const toAddress = urlParams.get("to");
+
+    const tonConnect = new TonConnectUI({
+      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
+    });
+
+    const tx = {
+      validUntil: Math.floor(Date.now() / 1000) + 360, // 6 mins
+      messages: [
+        {
+          address: toAddress,
+          amount: nanoAmount
+        }
+      ]
+    };
+
+    // Send transaction request to wallet
+    tonConnect.sendTransaction(tx).then(result => {
+      alert("✅ Transaction sent!");
+    }).catch(error => {
+      console.error(error);
+      alert("❌ Transaction failed or canceled.");
+    });
+  </script>
+</body>
+</html>
+
