@@ -2,80 +2,98 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TON Sign Request</title>
   <style>
     body {
-      background: #000;
+      background-color: #000;
       color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       text-align: center;
-      padding: 1.5rem;
+      flex-direction: column;
     }
-    #status {
-      font-size: 18px;
-      line-height: 1.6;
+    .status {
+      font-size: 1.2rem;
+      margin-top: 1rem;
     }
-    a {
-      color: #00f0ff;
-      text-decoration: underline;
-    }
+    .error { color: #ff4b4b; }
+    .success { color: #00ffcc; }
+    .loading { color: #00bfff; }
   </style>
-  <script type="module">
-    import { TonConnect } from "https://unpkg.com/@tonconnect/sdk@latest";
+</head>
+<body>
+  <div id="status" class="status loading">🔗 Preparing your transaction...</div>
 
+  <!-- ✅ UMD version of TonConnect SDK -->
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+
+  <script>
     const status = document.getElementById("status");
+
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get("to");
     const amount = urlParams.get("amount");
 
-    const connector = new TonConnect({
+    // Validate parameters
+    if (!to || !amount) {
+      status.textContent = "❌ Missing transaction parameters.";
+      status.className = "status error";
+      throw new Error("Missing parameters");
+    }
+
+    const isValidTON = /^UQ[A-Za-z0-9_-]{46}$/.test(to);
+    if (!isValidTON) {
+      status.textContent = "❌ Invalid TON address format.";
+      status.className = "status error";
+      throw new Error("Invalid address");
+    }
+
+    const connector = new window.TonConnectSDK.TonConnect({
       manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json"
     });
 
-    async function signTransaction() {
-      if (!to || !amount) {
-        status.textContent = "❗ Missing 'to' or 'amount' in the URL.";
-        return;
-      }
-
+    async function run() {
       try {
         status.textContent = "🔐 Connecting to wallet...";
+        status.className = "status loading";
+
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          status.textContent = "⚠️ Wallet not connected. Please connect your wallet first.";
+          status.textContent = "❌ Wallet not connected.";
+          status.className = "status error";
           return;
         }
 
-        const transaction = {
-          validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+        const nano = parseFloat(amount) * 1e9;
+
+        const tx = {
+          validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [
             {
               address: to,
-              amount: amount.toString(), // make sure it's a string
-            }
-          ]
+              amount: nano.toString(),
+            },
+          ],
         };
 
-        status.textContent = "🚀 Sending transaction...";
-        await connector.sendTransaction(transaction);
+        status.textContent = "🚀 Sending transaction to wallet...";
+        const result = await connector.sendTransaction(tx);
 
-        status.innerHTML = "✅ Transaction sent successfully!<br/><br/><a href='https://t.me/GigiP2Bot'>🔙 Back to Bot</a>";
-      } catch (error) {
-        status.textContent = `❌ Error: ${error.message}`;
+        status.textContent = `✅ Transaction sent! BOC: ${result.boc}`;
+        status.className = "status success";
+      } catch (err) {
+        console.error("Signing error:", err);
+        status.textContent = "❌ Signing cancelled or failed.";
+        status.className = "status error";
       }
     }
 
-    signTransaction();
+    run();
   </script>
-</head>
-<body>
-  <div id="status">🔄 Preparing transaction...</div>
 </body>
 </html>
-
