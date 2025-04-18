@@ -2,60 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TON Sign Request</title>
-  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect.umd.js"></script>
-  <script>
+  <script type="module">
+    import { TonConnect } from "https://unpkg.com/@tonconnect/sdk@latest";
+
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get("to");
     const amount = urlParams.get("amount");
 
-    const statusEl = document.createElement("div");
-    statusEl.style = "padding: 1rem; font-family: sans-serif; font-size: 1.2rem; color: white;";
-    document.body.appendChild(statusEl);
+    const connector = new TonConnect({
+      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json",
+    });
 
-    async function run() {
-      if (!to || !amount) {
-        statusEl.textContent = "❌ Missing transaction parameters.";
-        return;
-      }
-
-      const connector = new tonConnect.TonConnect({
-        manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
-      });
-
+    async function signTransaction() {
+      const status = document.getElementById("status");
       try {
+        status.textContent = "🔐 Connecting to wallet...";
         await connector.restoreConnection();
 
         if (!connector.connected) {
-          await connector.connect({ jsBridgeKey: 'ton-injected' }); // For Telegram Wallet
-        }
-
-        if (!connector.connected) {
-          statusEl.textContent = "❌ Wallet not connected.";
+          status.textContent = "⚠️ Wallet not connected.";
           return;
         }
 
-        await connector.sendTransaction({
+        const transaction = {
           validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [
             {
               address: to,
-              amount: amount
-            }
-          ]
-        });
+              amount: amount,
+            },
+          ],
+        };
 
-        statusEl.textContent = "✅ Transaction sent to TON Wallet!";
-      } catch (err) {
-        console.error("❌ Error during signing:", err);
-        statusEl.textContent = "❌ Signing cancelled or failed.";
+        status.textContent = "🚀 Sending transaction...";
+        await connector.sendTransaction(transaction);
+        status.textContent = "✅ Transaction sent successfully!";
+      } catch (error) {
+        status.textContent = `❌ Error: ${error.message}`;
       }
     }
 
-    run();
+    signTransaction();
   </script>
 </head>
-<body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;"></body>
+<body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;">
+  <div id="status">🔄 Preparing transaction...</div>
+</body>
 </html>
-
