@@ -2,118 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TON Connect Sign Request</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
   <style>
     body {
       background-color: #000;
-      color: #fff;
+      color: white;
       font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
       text-align: center;
-      padding: 2rem;
+      flex-direction: column;
     }
-
     .status {
-      font-size: 1.2rem;
       margin-top: 1rem;
+      font-size: 1.2rem;
     }
-
     .error { color: #ff4b4b; }
     .success { color: #00ffcc; }
     .loading { color: #00bfff; }
-
-    .qr-box {
-      margin-top: 2rem;
-      border: 1px solid #444;
-      padding: 1rem;
-      display: inline-block;
-      background: #111;
-    }
-
-    canvas {
-      margin-top: 1rem;
-    }
   </style>
 </head>
 <body>
   <h2>TON Connect Sign Request</h2>
-  <div id="status" class="status loading">🔄 Connecting to wallet...</div>
-  <div id="qr-container" class="qr-box" style="display:none;"></div>
+  <div id="status" class="status loading">Connecting to wallet...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-  <script>
-    (async () => {
-      const status = document.getElementById("status");
-      const qrContainer = document.getElementById("qr-container");
+  <script type="module">
+    import { TonConnect, CHAIN } from "https://unpkg.com/@tonconnect/sdk@latest";
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const to = urlParams.get("to");
-      const amount = urlParams.get("amount");
+    const status = document.getElementById("status");
 
-      if (!to || !amount) {
-        status.textContent = "❌ Missing amount or address";
-        status.className = "status error";
-        return;
-      }
+    const url = new URL(window.location.href);
+    const to = url.searchParams.get("to");
+    const amount = url.searchParams.get("amount");
 
-      const connector = new window.TonConnectSDK.TonConnect({
-        manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json"
-      });
+    if (!to || !amount) {
+      status.className = "status error";
+      status.textContent = "❌ Missing amount or address";
+      throw new Error("Missing amount or address");
+    }
 
+    const connector = new TonConnect({
+      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
+    });
+
+    const tx = {
+      validUntil: Math.floor(Date.now() / 1000) + 600,
+      messages: [{
+        address: to,
+        amount: amount.toString(),
+      }]
+    };
+
+    async function connectAndSend() {
       try {
-        const wallets = await connector.getWallets();
-        const injected = wallets.find(w => w.embedded);
-
-        if (!connector.connected) {
-          if (injected) {
-            await connector.connect({ jsBridgeKey: injected.jsBridgeKey });
-          } else {
-            // Show QR code fallback
-            const universalLink = connector.connect({
-              universalLink: "https://app.tonkeeper.com/ton-connect",
-              bridgeUrl: "https://bridge.tonapi.io/bridge"
-            });
-            qrContainer.style.display = "block";
-            status.textContent = "📱 Scan this QR code with TON Wallet";
-            status.className = "status loading";
-            QRCode.toCanvas(document.createElement("canvas"), await universalLink, function (err, canvas) {
-              if (!err) qrContainer.appendChild(canvas);
-            });
-            return;
-          }
+        const connected = await connector.restoreConnection();
+        if (!connected) {
+          await connector.connectWallet();
         }
 
         if (!connector.connected) {
-          status.textContent = "❌ Wallet not connected.";
+          status.textContent = "❌ Wallet not connected";
           status.className = "status error";
           return;
         }
 
-        const nano = parseFloat(amount) * 1e9;
-        const tx = {
-          validUntil: Math.floor(Date.now() / 1000) + 600,
-          messages: [
-            {
-              address: to,
-              amount: nano.toString(),
-            },
-          ],
-        };
-
-        status.textContent = "🚀 Sending transaction to wallet...";
-        status.className = "status loading";
-
+        status.textContent = "🚀 Sending transaction...";
         const result = await connector.sendTransaction(tx);
-
         status.textContent = `✅ Transaction sent! BOC: ${result.boc}`;
         status.className = "status success";
       } catch (err) {
-        console.error("Signing error:", err);
+        console.error("❌ Signing error:", err);
         status.textContent = "❌ Signing cancelled or failed.";
         status.className = "status error";
       }
-    })();
+    }
+
+    connectAndSend();
   </script>
 </body>
 </html>
