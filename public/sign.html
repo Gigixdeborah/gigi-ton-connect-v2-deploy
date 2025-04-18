@@ -3,29 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TON Wallet Sign</title>
-  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <title>TON Connect Sign Request</title>
+  <script src="https://unpkg.com/@tonconnect/ui@0.0.9/dist/tonconnect-ui.min.js"></script>
   <style>
     body {
       background-color: #000;
       color: white;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
       text-align: center;
-      padding: 50px;
-    }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
     }
     .loader {
-      font-size: 1.2rem;
-      color: #ccc;
+      color: #00bfff;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <h1>🟡 Sign TON Transaction</h1>
-  <p class="loader">🔗 Preparing transaction...</p>
+  <div class="loader">⏳ Preparing transaction...</div>
 
   <script>
     (async () => {
@@ -34,36 +34,36 @@
       const to = urlParams.get("to");
 
       if (!amount || !to) {
-        document.querySelector(".loader").innerText = "❌ Invalid parameters.";
+        document.querySelector(".loader").innerText = "❌ Missing amount or recipient";
         return;
       }
 
-      const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+      const connector = new TON_CONNECT_UI.TonConnectUI({
         manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json",
-        buttonRootId: "", // No button, we trigger directly
+        buttonRootId: "", // don't attach a floating button
       });
 
       try {
-        const connected = await tonConnectUI.connectWallet();
+        await connector.connectUI(); // this shows the wallet list popup
+
+        const connected = await connector.connected;
         if (!connected) {
           document.querySelector(".loader").innerText = "❌ Wallet connection failed.";
           return;
         }
 
-        const transaction = {
+        await connector.sendTransaction({
           validUntil: Math.floor(Date.now() / 1000) + 360,
           messages: [{
             address: to,
             amount: amount.toString(),
           }]
-        };
+        });
 
-        const result = await tonConnectUI.sendTransaction(transaction);
-        document.querySelector(".loader").innerText = "✅ Transaction sent!";
-        console.log("Transaction result:", result);
+        document.querySelector(".loader").innerText = "✅ Transaction request sent!";
       } catch (err) {
-        document.querySelector(".loader").innerText = "❌ Transaction canceled or failed.";
-        console.error(err);
+        console.error("Transaction failed", err);
+        document.querySelector(".loader").innerText = "❌ Transaction failed or cancelled.";
       }
     })();
   </script>
