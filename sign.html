@@ -1,42 +1,57 @@
-<script type="module">
-  import { TonConnect } from "https://unpkg.com/@tonconnect/sdk@latest";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TON Sign Request</title>
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+</head>
+<body style="background:#000; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh;">
+  <div id="status" style="padding: 1rem; font-family: sans-serif; font-size: 1.2rem;">⏳ Connecting to wallet...</div>
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const to = urlParams.get("to");
-  const amount = urlParams.get("amount");
+  <script>
+    (async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const to = urlParams.get("to");
+      const amount = urlParams.get("amount");
 
-  const statusEl = document.getElementById("status");
+      const statusEl = document.getElementById("status");
 
-  async function run() {
-    try {
-      const connector = new TonConnect({
-        manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
-      });
+      try {
+        const connector = new window.TonConnectSDK.TonConnect({
+          manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
+        });
 
-      await connector.restoreConnection();
+        await connector.restoreConnection();
 
-      // Force connect if not connected yet
-      if (!connector.connected) {
-        await connector.connect({ jsBridgeKey: 'ton-injected' }); // 👈 Key for Telegram wallet
+        // Force wallet connect if not already connected
+        if (!connector.connected) {
+          await connector.connect({ jsBridgeKey: 'ton-injected' }); // For Telegram Wallet
+        }
+
+        if (!connector.connected) {
+          statusEl.textContent = "❌ Wallet not connected.";
+          return;
+        }
+
+        // Send transaction
+        await connector.sendTransaction({
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [
+            {
+              address: to,
+              amount: amount
+            }
+          ]
+        });
+
+        statusEl.textContent = "✅ Transaction sent to TON Wallet!";
+      } catch (err) {
+        console.error("❌ Error:", err);
+        statusEl.textContent = "❌ Signing cancelled or failed.";
       }
+    })();
+  </script>
+</body>
+</html>
 
-      if (!connector.connected) {
-        statusEl.textContent = "❌ Wallet not connected.";
-        return;
-      }
-
-      // Send transaction
-      await connector.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{ address: to, amount: amount }]
-      });
-
-      statusEl.textContent = "✅ Transaction sent to TON Wallet!";
-    } catch (err) {
-      console.error("❌ Error:", err);
-      statusEl.textContent = "❌ Signing cancelled or failed.";
-    }
-  }
-
-  run();
-</script>
