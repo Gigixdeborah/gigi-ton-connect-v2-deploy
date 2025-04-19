@@ -3,89 +3,147 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TON Sign</title>
+  <title>Multi-Wallet Sign</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui/dist/tonconnect-ui.min.js" defer></script>
+  <script type="module">
+    import { TonConnectUI } from "https://cdn.skypack.dev/@tonconnect/ui";
+
+    // Parse URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const recipient = params.get("recipient");
+    const amount = params.get("amount");
+    const token = params.get("token");
+    const userId = params.get("user"); // Telegram user ID for your webhook
+
+    const tonConnectUI = new TonConnectUI({
+      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json",
+      buttonRootId: "ton-connect-btn"
+    });
+
+    const statusDiv = document.getElementById("status");
+    const tonSignBtn = document.getElementById("ton-sign-btn");
+    const evmSignBtn = document.getElementById("evm-sign-btn");
+    const solSignBtn = document.getElementById("sol-sign-btn");
+
+    // Handle TON connection
+    tonConnectUI.onStatusChange(async (walletInfo) => {
+      if (walletInfo) {
+        statusDiv.innerHTML = `TON Wallet Connected: <code>${walletInfo.account.address}</code>`;
+        tonSignBtn.style.display = "block";
+      }
+    });
+
+    tonSignBtn.onclick = async () => {
+      try {
+        const nanoTON = String(Number(amount) * 1e9);
+        const tx = {
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [{ address: recipient, amount: nanoTON }]
+        };
+
+        const result = await tonConnectUI.sendTransaction(tx);
+        alert("TON transaction sent!");
+        console.log("TON TX Result:", result);
+
+        await sendToBot({
+          network: "TON",
+          user: userId,
+          tx: result,
+          amount,
+          token,
+          recipient
+        });
+      } catch (err) {
+        alert("TON signing cancelled.");
+        console.error(err);
+      }
+    };
+
+    evmSignBtn.onclick = async () => {
+      if (typeof window.ethereum === "undefined") return alert("MetaMask not installed.");
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const msg = `Sign this to verify sending ${amount} ${token} to ${recipient}`;
+        const sig = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [msg, accounts[0]]
+        });
+
+        alert("MetaMask signed successfully.");
+        await sendToBot({
+          network: "EVM",
+          user: userId,
+          tx: { address: accounts[0], signature: sig },
+          amount,
+          token,
+          recipient
+        });
+      } catch (err) {
+        alert("MetaMask signing cancelled.");
+        console.error(err);
+      }
+    };
+
+    solSignBtn.onclick = async () => {
+      if (!window?.solana?.isPhantom) return alert("Phantom not found.");
+      try {
+        const resp = await window.solana.connect();
+        const msg = new TextEncoder().encode(`Sign to send ${amount} ${token} to ${recipient}`);
+        const signed = await window.solana.signMessage(msg, "utf8");
+
+        alert("Phantom signed successfully.");
+        await sendToBot({
+          network: "SOLANA",
+          user: userId,
+          tx: signed,
+          amount,
+          token,
+          recipient
+        });
+      } catch (err) {
+        alert("Phantom signing cancelled.");
+        console.error(err);
+      }
+    };
+
+    // Send TX result to your Telegram bot
+    async function sendToBot(data) {
+      try {
+        await fetch("https://your-backend-url.com/api/receive-signature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      } catch (err) {
+        console.error("Webhook failed", err);
+      }
+    }
+  </script>
+
   <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      padding: 1rem;
-      text-align: center;
+    body { font-family: sans-serif; background: #f2f7fb; padding: 2rem; text-align: center; }
+    h2 { color: #222; }
+    button {
+      margin: 8px;
+      padding: 12px 22px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .loader {
-      font-size: 1rem;
-      color: #00bfff;
-      margin-top: 20px;
-    }
-    ton-connect {
-      margin-top: 16px;
-    }
+    #ton-sign-btn { background: #0088cc; color: white; }
+    #evm-sign-btn { background: #f6851b; color: white; }
+    #sol-sign-btn { background: #512da8; color: white; }
+    #status { margin: 15px 0; font-size: 15px; color: #333; }
   </style>
 </head>
 <body>
-  <h2>🔐 Confirm TON Transfer</h2>
-  <div id="status" class="loader">Preparing transaction...</div>
-  <ton-connect></ton-connect>
+  <h2>Connect & Sign</h2>
+  <div id="ton-connect-btn"></div>
+  <div id="status">Waiting for wallet connection...</div>
 
-  <script type="module">
-    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@latest";
-
-    const status = document.getElementById("status");
-    const urlParams = new URLSearchParams(window.location.search);
-    const to = urlParams.get("to");
-    const amount = urlParams.get("amount");
-    const userId = urlParams.get("user_id") || "anonymous";
-
-    const tonAddressRegex = /^UQ[A-Za-z0-9_-]{46}$/;
-
-    if (!tonAddressRegex.test(to)) {
-      status.textContent = "❌ Invalid TON wallet address.";
-      throw new Error("Invalid TON address");
-    }
-
-    if (!amount || isNaN(amount)) {
-      status.textContent = "❌ Invalid transfer amount.";
-      throw new Error("Invalid amount");
-    }
-
-    const connector = new TonConnectUI({
-      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json",
-      buttonRootId: "ton-connect-button"
-    });
-
-    connector.connectUI(); // 👈 Shows wallet selection options
-
-    async function signTransaction() {
-      try {
-        status.textContent = "🔗 Waiting for wallet connection...";
-        await connector.restoreConnection();
-
-        if (!connector.connected) {
-          status.textContent = "❌ Wallet not connected. Please select a wallet above.";
-          return;
-        }
-
-        const tx = {
-          validUntil: Math.floor(Date.now() / 1000) + 300,
-          messages: [{ address: to, amount: amount.toString() }]
-        };
-
-        status.textContent = "🚀 Sending transaction...";
-        const result = await connector.sendTransaction(tx);
-        status.textContent = `✅ Success! Transaction sent.`;
-        console.log("User ID:", userId, "Hash:", result?.boc);
-      } catch (err) {
-        console.error(err);
-        status.textContent = `❌ Transaction failed: ${err.message || err}`;
-      }
-    }
-
-    signTransaction();
-  </script>
+  <button id="ton-sign-btn" style="display:none;">Sign with TON</button>
+  <button id="evm-sign-btn">Sign with MetaMask</button>
+  <button id="sol-sign-btn">Sign with Phantom</button>
 </body>
 </html>
