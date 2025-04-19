@@ -3,40 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TON Wallet Sign</title>
+  <title>TON Sign</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 1rem;
+      text-align: center;
+    }
+    .loader {
+      font-size: 1rem;
+      color: #00bfff;
+      margin-top: 20px;
+    }
+    ton-connect {
+      margin-top: 16px;
+    }
+  </style>
 </head>
-<body style="background:black;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-  <h2>🪙 Sign TON Transaction</h2>
-  <p>🔗 Preparing transaction...</p>
+<body>
+  <h2>🔐 Confirm TON Transfer</h2>
+  <div id="status" class="loader">Preparing transaction...</div>
+  <ton-connect></ton-connect>
+
   <script type="module">
-    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@latest?module";
+    import { TonConnectUI } from "https://unpkg.com/@tonconnect/ui@latest";
 
+    const status = document.getElementById("status");
     const urlParams = new URLSearchParams(window.location.search);
-    const nanoAmount = urlParams.get("amount");
-    const toAddress = urlParams.get("to");
+    const to = urlParams.get("to");
+    const amount = urlParams.get("amount");
+    const userId = urlParams.get("user_id") || "anonymous";
 
-    const tonConnect = new TonConnectUI({
-      manifestUrl: "https://gigi-ton-connect-v2-deploy.onrender.com/tonconnect-manifest.json"
+    const tonAddressRegex = /^UQ[A-Za-z0-9_-]{46}$/;
+
+    if (!tonAddressRegex.test(to)) {
+      status.textContent = "❌ Invalid TON wallet address.";
+      throw new Error("Invalid TON address");
+    }
+
+    if (!amount || isNaN(amount)) {
+      status.textContent = "❌ Invalid transfer amount.";
+      throw new Error("Invalid amount");
+    }
+
+    const connector = new TonConnectUI({
+      manifestUrl: "https://gigi-ton-connect-v2.onrender.com/tonconnect-manifest.json",
+      buttonRootId: "ton-connect-button"
     });
 
-    const tx = {
-      validUntil: Math.floor(Date.now() / 1000) + 360, // 6 mins
-      messages: [
-        {
-          address: toAddress,
-          amount: nanoAmount
+    connector.connectUI(); // 👈 Shows wallet selection options
+
+    async function signTransaction() {
+      try {
+        status.textContent = "🔗 Waiting for wallet connection...";
+        await connector.restoreConnection();
+
+        if (!connector.connected) {
+          status.textContent = "❌ Wallet not connected. Please select a wallet above.";
+          return;
         }
-      ]
-    };
 
-    // Send transaction request to wallet
-    tonConnect.sendTransaction(tx).then(result => {
-      alert("✅ Transaction sent!");
-    }).catch(error => {
-      console.error(error);
-      alert("❌ Transaction failed or canceled.");
-    });
+        const tx = {
+          validUntil: Math.floor(Date.now() / 1000) + 300,
+          messages: [{ address: to, amount: amount.toString() }]
+        };
+
+        status.textContent = "🚀 Sending transaction...";
+        const result = await connector.sendTransaction(tx);
+        status.textContent = `✅ Success! Transaction sent.`;
+        console.log("User ID:", userId, "Hash:", result?.boc);
+      } catch (err) {
+        console.error(err);
+        status.textContent = `❌ Transaction failed: ${err.message || err}`;
+      }
+    }
+
+    signTransaction();
   </script>
 </body>
 </html>
-
